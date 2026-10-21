@@ -73,6 +73,8 @@ export interface JobsPage {
 /** What the visitor may do on THIS site (derived from their Role Manager codenames). */
 export interface Abilities {
   manageJobs: boolean;
+  /** Read the contact form's messages (`/portal/inquiries`). */
+  manageInquiries: boolean;
 }
 
 export interface Member {
@@ -90,4 +92,24 @@ export interface UploadRow {
   fileType: string;
   fileSize: number;
   createdAt: string;
+}
+
+export interface Inquiry {
+  id: number;
+  kind: string;
+  name: string;
+  /** The address the sender typed. Answered to site admins only. */
+  email: string;
+  company: string | null;
+  topic: string;
+  size: string | null;
+  message: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface InquiriesPage {
+  inquiries: Inquiry[];
+  /** Pass back as `?before=` for the next page; null on the last one. */
+  nextBefore: number | null;
 }

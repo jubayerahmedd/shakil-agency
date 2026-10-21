@@ -1,23 +1,25 @@
 ---
 /**
- * Header, footer and <head> for every page. The page fetches the brand (`site`)
- * and the visitor (`viewer`) with `pageContext` and passes them in, so the
- * layout never makes an API call of its own.
+ * Header, footer and <head> for every website page. The page fetches the brand
+ * (`site`) and the visitor (`viewer`) with `pageContext` / `staticContext` and
+ * passes them in, so the layout never makes an API call of its own.
  *
- * Sign in, sign up, joining and the community itself are App pages on this
- * same hostname: always plain `<a href>`, never a client-side route.
+ * Sign in, joining and the community itself are App pages on this same
+ * hostname (`/login`, `/join`, `/feeds`): always plain `<a href>`.
  */
 import '../styles/global.css';
+import '../styles/site.css';
 
 import BrandMark from '../components/BrandMark.astro';
-import {NAV} from '../content/site';
+import Icon from '../components/Icon.astro';
+import {FOOTER, LINKS, NAV, SUPPORT_EMAIL, USE_CASE_NAV, withName} from '../content/site';
 import type {Site, Viewer} from '../lib/types';
 import {initials} from '../lib/format';
 
 interface Props {
   site: Site | null;
   viewer: Viewer;
-  /** The page's own name; the tab shows "<title> · <community>". Omit on home. */
+  /** The page's own name; the tab shows "<title> · <community>". */
   title?: string;
   description?: string;
   /** Extra <head> tags, e.g. og:image on a post. */
@@ -29,15 +31,22 @@ interface Props {
    * a renamed community (`/site-api/site`) after load.
    */
   isStatic?: boolean;
+  /** Keep a page out of search results (e.g. a 404). */
+  noindex?: boolean;
 }
 
-const {site, viewer, title, description, image, isStatic = false} = Astro.props;
+const {site, viewer, title, description, image, isStatic = false, noindex = false} = Astro.props;
 const name = site?.name ?? 'Community';
 const fullTitle = title ? `${title} · ${name}` : name;
-const path = Astro.url.pathname;
-const active = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isActive = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`));
+const current = (href: string) => (isActive(href) ? 'page' : undefined);
+const inUseCases = path.startsWith('/use-cases');
 // Back to this page after signing in. A PATH only: the App ignores full URLs.
 const back = encodeURIComponent(`${path}${Astro.url.search}`);
+const loginHref = `${LINKS.login}?redirectTo=${back}`;
+const canonical = new URL(path, Astro.url.origin).toString();
+const year = new Date().getUTCFullYear();
 ---
 
 <!doctype html>
@@ -46,82 +55,210 @@ const back = encodeURIComponent(`${path}${Astro.url.search}`);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
-    {description && <meta name="description" content={description} />}
+    {description && <meta name="description" content={withName(description, name)} />}
+    {noindex && <meta name="robots" content="noindex" />}
+    {!noindex && !isStatic && <link rel="canonical" href={canonical} />}
+    <meta name="theme-color" content="#1a1714" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={name} />
     <meta property="og:title" content={title ?? name} />
+    {description && <meta property="og:description" content={withName(description, name)} />}
     {image && <meta property="og:image" content={image} />}
+    <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
     {site?.favIcon && <link rel="icon" href={site.favIcon} />}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
+    />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <script is:inline>
+      // Reveals only hide content when script runs; if the page script never
+      // arrives, everything shows after a moment anyway.
+      document.documentElement.classList.add('js');
+      setTimeout(() => document.querySelectorAll('.reveal').forEach(el => el.classList.add('is-in')), 2500);
+    </script>
   </head>
   <body data-viewer={viewer.state} data-static={isStatic ? '1' : undefined}>
-    <header class="site-header">
-      <div class="wrap site-header-inner">
-        <a href="/" class="brand">
-          <BrandMark site={site} />
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header" data-header>
+      <div class="container nav">
+        <a href="/" class="brand" aria-label={`${name} home`}>
+          <BrandMark site={site} size={30} />
           <span class="brand-name" data-brand-text="{name}" data-built-name={name}>{name}</span>
         </a>
-        <nav class="site-nav" aria-label="Main">
-          {NAV.map(item => (
-            <a href={item.href} class:list={{active: active(item.href)}}>
-              {item.label}
-            </a>
-          ))}
-          <a
-            href="/portal"
-            class:list={{active: active('/portal')}}
-            data-member-only
-            hidden={viewer.state !== 'member'}>
-            Dashboard
-          </a>
+
+        <nav class="nav__center" aria-label="Main">
+          <a class="nav__link" href={NAV[0].href} aria-current={current(NAV[0].href)}>{NAV[0].label}</a>
+          <a class="nav__link" href={NAV[1].href} aria-current={current(NAV[1].href)}>{NAV[1].label}</a>
+          <div class="nav__item" data-dropdown>
+            <button
+              class:list={['nav__link', inUseCases && 'is-active']}
+              type="button"
+              aria-expanded="false"
+              aria-controls="usecase-menu">
+              Use cases <Icon name="caret" class="nav__caret" />
+            </button>
+            <div class="nav__dropdown" id="usecase-menu">
+              {
+                USE_CASE_NAV.map(item => (
+                  <a class="nav__dropitem" href={item.href} aria-current={current(item.href)}>
+                    <b>{item.label}</b>
+                    <span>{item.blurb}</span>
+                  </a>
+                ))
+              }
+              <a class="nav__dropitem" href="/use-cases" aria-current={path === '/use-cases' ? 'page' : undefined}>
+                <b>All use cases</b>
+                <span>See how each kind of creator uses it</span>
+              </a>
+            </div>
+          </div>
+          {
+            NAV.slice(2).map(item => (
+              <a class="nav__link" href={item.href} aria-current={current(item.href)}>
+                {item.label}
+              </a>
+            ))
+          }
         </nav>
-        <div class="session" data-session>
-          {viewer.state === 'member' ? (
-            <>
-              <a class="button ghost small-button" href="/feeds">
-                Community
-              </a>
-              <span class="viewer" title={viewer.name ?? ''}>
-                {viewer.avatar ? (
-                  <img src={viewer.avatar} alt="" width="28" height="28" />
-                ) : (
-                  <span class="avatar-fallback" aria-hidden="true">
-                    {initials(viewer.name ?? '')}
+
+        <div class="nav__right">
+          <div class="session" data-session>
+            {
+              viewer.state === 'member' ? (
+                <>
+                  <a class="button ghost small-button" href={LINKS.community}>
+                    Community
+                  </a>
+                  <span class="viewer" title={viewer.name ?? ''}>
+                    {viewer.avatar ? (
+                      <img src={viewer.avatar} alt="" width="28" height="28" />
+                    ) : (
+                      <span class="avatar-fallback" aria-hidden="true">
+                        {initials(viewer.name ?? '')}
+                      </span>
+                    )}
                   </span>
-                )}
-              </span>
-              {viewer.preview ? (
-                <span class="chip" title="Editor preview: a stand-in signed-in member">Preview</span>
+                  {viewer.preview ? (
+                    <span class="chip" title="Editor preview: a stand-in signed-in member">
+                      Preview
+                    </span>
+                  ) : (
+                    <button class="button link small-button" type="button" data-logout>
+                      Sign out
+                    </button>
+                  )}
+                </>
+              ) : viewer.state === 'applicant' ? (
+                <a class="btn btn--sm" href="/join">
+                  Finish joining
+                </a>
               ) : (
-                <button class="button link small-button" type="button" data-logout>
-                  Sign out
-                </button>
-              )}
-            </>
-          ) : viewer.state === 'applicant' ? (
-            <a class="button small-button" href="/join">
-              Finish joining
-            </a>
-          ) : (
-            <>
-              <a class="button link small-button" href={`/login?redirectTo=${back}`}>
-                Log in
-              </a>
-              <a class="button small-button" href={`/register?redirectTo=${back}`}>
-                Join
-              </a>
-            </>
-          )}
+                <>
+                  <a class="nav__link nav-login" href={loginHref}>
+                    Log in
+                  </a>
+                  <a class="btn btn--sm" href={LINKS.start}>
+                    Get started
+                  </a>
+                </>
+              )
+            }
+          </div>
+          <button
+            class="nav__menu-button"
+            type="button"
+            aria-expanded="false"
+            aria-controls="mobile-menu"
+            aria-label="Open menu"
+            data-menu-button>
+            <Icon name="menu" class="icon-open" />
+            <Icon name="close" class="icon-close" />
+          </button>
+        </div>
+      </div>
+
+      <div class="mobile-menu" id="mobile-menu" data-menu>
+        <nav aria-label="Mobile">
+          <div class="mobile-menu__group">
+            <a href="/" aria-current={current('/')}>Home</a>
+            <a href={NAV[0].href} aria-current={current(NAV[0].href)}>{NAV[0].label}</a>
+            <a href={NAV[1].href} aria-current={current(NAV[1].href)}>{NAV[1].label}</a>
+          </div>
+          <div class="mobile-menu__group">
+            <p class="mobile-menu__label mono">Use cases</p>
+            {
+              USE_CASE_NAV.map(item => (
+                <a href={item.href} aria-current={current(item.href)}>
+                  {item.label}
+                </a>
+              ))
+            }
+          </div>
+          <div class="mobile-menu__group">
+            {
+              NAV.slice(2).map(item => (
+                <a href={item.href} aria-current={current(item.href)}>
+                  {item.label}
+                </a>
+              ))
+            }
+          </div>
+        </nav>
+        <div class="mobile-menu__actions" data-guest-only hidden={viewer.state === 'member'}>
+          <a class="btn btn--lg" href={LINKS.start}>Get started</a>
+          <a class="btn btn--ghost btn--lg" href={loginHref}>Log in</a>
+        </div>
+        <div class="mobile-menu__actions" data-member-only hidden={viewer.state !== 'member'}>
+          <a class="btn btn--lg" href={LINKS.community}>Open the community</a>
         </div>
       </div>
     </header>
 
-    <slot />
+    <div id="main" tabindex="-1">
+      <slot />
+    </div>
 
-    <footer class="site-footer">
-      <div class="wrap site-footer-inner">
-        <span data-brand-text="© {year} {name}">© {new Date().getUTCFullYear()} {name}</span>
-        <nav class="footer-nav" aria-label="Footer">
-          {NAV.map(item => <a href={item.href}>{item.label}</a>)}
-          <a href="/feeds">Community</a>
-        </nav>
+    <footer class="site-foot">
+      <div class="container">
+        <div class="site-foot__top">
+          <div>
+            <a href="/" class="brand">
+              <BrandMark site={site} size={30} />
+              <span data-brand-text="{name}">{name}</span>
+            </a>
+            <p class="site-foot__statement">{FOOTER.statement}</p>
+            <div class="btn-row">
+              <a class="btn btn--sm" href={LINKS.start}>Get started</a>
+              <a class="btn btn--ghost btn--sm" href={LINKS.demo}>Book a demo</a>
+            </div>
+          </div>
+          <div class="site-foot__cols">
+            {
+              FOOTER.columns.map(column => (
+                <nav aria-label={column.title}>
+                  <h2>{column.title}</h2>
+                  <ul>
+                    {column.links.map(link => (
+                      <li>
+                        <a href={link.href}>{link.label}</a>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              ))
+            }
+          </div>
+        </div>
+        <div class="site-foot__bottom">
+          <span data-brand-text="© {year} {name}">© {year} {name}</span>
+          <span>
+            Questions? <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+          </span>
+        </div>
       </div>
     </footer>
 
@@ -182,6 +319,85 @@ const back = encodeURIComponent(`${path}${Astro.url.search}`);
           button.removeAttribute('aria-busy');
         });
       });
+
+      // ---- header: frost once the page scrolls (rAF-throttled) ----
+      const header = document.querySelector<HTMLElement>('[data-header]');
+      let ticking = false;
+      const onScroll = () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          header?.classList.toggle('is-scrolled', window.scrollY > 8);
+          ticking = false;
+        });
+      };
+      window.addEventListener('scroll', onScroll, {passive: true});
+      onScroll();
+
+      // ---- "Use cases" dropdown: hover on desktop, click/tap and keyboard everywhere ----
+      for (const item of document.querySelectorAll<HTMLElement>('[data-dropdown]')) {
+        const toggle = item.querySelector<HTMLButtonElement>('button');
+        if (!toggle) continue;
+        const setOpen = (open: boolean) => {
+          item.classList.toggle('is-open', open);
+          toggle.setAttribute('aria-expanded', String(open));
+        };
+        toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+        item.addEventListener('mouseenter', () => toggle.setAttribute('aria-expanded', 'true'));
+        item.addEventListener('mouseleave', () => {
+          if (!item.classList.contains('is-open')) toggle.setAttribute('aria-expanded', 'false');
+        });
+        item.addEventListener('focusout', event => {
+          if (!item.contains(event.relatedTarget as Node | null)) setOpen(false);
+        });
+        item.addEventListener('keydown', event => {
+          if (event.key === 'Escape') {
+            setOpen(false);
+            toggle.focus();
+          }
+        });
+        document.addEventListener('click', event => {
+          if (!item.contains(event.target as Node)) setOpen(false);
+        });
+      }
+
+      // ---- phone menu ----
+      const menuButton = document.querySelector<HTMLButtonElement>('[data-menu-button]');
+      const menu = document.querySelector<HTMLElement>('[data-menu]');
+      const setMenu = (open: boolean) => {
+        if (!menuButton || !menu) return;
+        menu.classList.toggle('is-open', open);
+        menuButton.setAttribute('aria-expanded', String(open));
+        menuButton.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+        document.body.classList.toggle('menu-open', open);
+        if (open) menu.querySelector<HTMLElement>('a')?.focus();
+      };
+      menuButton?.addEventListener('click', () => setMenu(menuButton.getAttribute('aria-expanded') !== 'true'));
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && menuButton?.getAttribute('aria-expanded') === 'true') {
+          setMenu(false);
+          menuButton.focus();
+        }
+      });
+      window.matchMedia('(min-width: 64.0625rem)').addEventListener('change', event => event.matches && setMenu(false));
+
+      // ---- reveal once: the hero, then each half of a split row as it arrives ----
+      const reveals = document.querySelectorAll<HTMLElement>('.reveal');
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(
+          entries => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              entry.target.classList.add('is-in');
+              observer.unobserve(entry.target);
+            }
+          },
+          {rootMargin: '0px 0px -8% 0px'}
+        );
+        reveals.forEach(el => observer.observe(el));
+      } else {
+        reveals.forEach(el => el.classList.add('is-in'));
+      }
     </script>
   </body>
 </html>

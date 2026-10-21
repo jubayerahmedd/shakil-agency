@@ -1,87 +1,168 @@
 ---
 /**
- * The blog, as a publication: masthead, search, and the story list. Rendered
- * on the server from `GET /site-api/posts` (in-process). Search and paging are
- * plain query strings (`/blog?search=…&page=2`), so every result is a real,
+ * The blog: categories, search, a featured post and the latest posts. Rendered
+ * on the server from `GET /site-api/posts` and `/posts/categories` (in-process;
+ * the posts come from the community's own blog). Filters and paging are plain
+ * query strings (`/blog?category=12&page=2`), so every view is a real,
  * shareable, crawlable URL.
  */
-import BrandMark from '../../components/BrandMark.astro';
-import PostRow from '../../components/PostRow.astro';
+import PageHead from '../../components/PageHead.astro';
 import Base from '../../layouts/Base.astro';
-import type {PostsPage} from '../../lib/types';
+import {formatDate, preview} from '../../lib/format';
+import type {PostsPage, PostSummary, PostTerm} from '../../lib/types';
 import {read} from '../../server/backend';
 import {pageContext} from '../../server/page';
 
-const PER_PAGE = 10;
+const PER_PAGE = 9;
 const page = Math.max(1, Number(Astro.url.searchParams.get('page')) || 1);
 const search = (Astro.url.searchParams.get('search') ?? '').trim().slice(0, 100);
+const categoryParam = Number(Astro.url.searchParams.get('category'));
+const categoryId = Number.isSafeInteger(categoryParam) && categoryParam > 0 ? categoryParam : 0;
 
 const {api, site, viewer} = await pageContext(Astro.request, Astro.response);
-const result = await read<PostsPage>(
-  api.posts.$get({query: {page: String(page), perPage: String(PER_PAGE), search}})
-);
+const [result, terms] = await Promise.all([
+  read<PostsPage>(
+    api.posts.$get({
+      query: {page: String(page), perPage: String(PER_PAGE), search, category: categoryId ? String(categoryId) : ''},
+    })
+  ),
+  read<{categories: PostTerm[]}>(api.posts.categories.$get()),
+]);
 const posts = result?.posts ?? [];
+const categories = terms?.categories ?? [];
+const activeCategory = categories.find(category => category.id === categoryId) ?? null;
 const name = site?.name ?? 'Community';
-const href = (n: number) => {
+
+const href = (n: number, category = categoryId) => {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
+  if (category) params.set('category', String(category));
   if (n > 1) params.set('page', String(n));
   const qs = params.toString();
   return qs ? `/blog?${qs}` : '/blog';
 };
-const [featured, ...rest] = page === 1 && !search ? posts : [null, ...posts];
+// The newest post leads the first, unfiltered page.
+const showFeatured = page === 1 && !search && !categoryId && posts.length > 0;
+const featured: PostSummary | null = showFeatured ? posts[0] : null;
+const rest = showFeatured ? posts.slice(1) : posts;
+const title = activeCategory ? `${activeCategory.name} · Blog` : 'Blog';
 ---
 
-<Base site={site} viewer={viewer} title="Blog" description={`Stories and updates from ${name}.`}>
-  <main class="pub">
-    <header class="pub-masthead">
-      <BrandMark site={site} size={64} />
-      <h1>{name}</h1>
-      <p class="pub-tagline">Stories, guides and updates from the community.</p>
-      {
-        viewer.state !== 'member' && (
-          <a class="button" href="/register?redirectTo=%2Fblog">
-            Join {name}
-          </a>
-        )
-      }
-    </header>
+<Base
+  site={site}
+  viewer={viewer}
+  title={title}
+  description={`Guides, stories and product news from ${name}: running a paid community, selling courses and keeping members engaged.`}>
+  <main>
+    <PageHead
+      title="Notes on building communities that last"
+      lead="Guides for coaches and creators, stories from communities on the platform, and what we are shipping next."
+    />
 
-    <form class="pub-search" action="/blog" method="get" role="search">
-      <input type="search" name="search" value={search} placeholder="Search posts" maxlength="100" />
-      <button class="button ghost" type="submit">Search</button>
-    </form>
+    <section class="block block--tight">
+      <div class="container">
+        <div class="blog-tools">
+          {
+            categories.length > 0 && (
+              <nav aria-label="Categories">
+                <ul class="cats">
+                  <li>
+                    <a href={href(1, 0)} aria-current={categoryId ? undefined : 'page'}>
+                      All
+                    </a>
+                  </li>
+                  {categories.map(category => (
+                    <li>
+                      <a href={href(1, category.id)} aria-current={category.id === categoryId ? 'page' : undefined}>
+                        {category.name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )
+          }
+          <form class="blog-search" action="/blog" method="get" role="search" novalidate>
+            {categoryId > 0 && <input type="hidden" name="category" value={categoryId} />}
+            <label class="hp" for="blog-q">Search posts</label>
+            <input id="blog-q" type="search" name="search" value={search} placeholder="Search posts" maxlength="100" />
+            <button class="btn btn--ghost btn--sm" type="submit">Search</button>
+          </form>
+        </div>
 
-    {search && (
-      <p class="muted small pub-results">
-        {posts.length === 0 ? 'No posts match' : 'Results for'} “{search}” · <a href="/blog">Clear</a>
-      </p>
-    )}
+        {
+          search && (
+            <p class="muted">
+              {posts.length === 0 ? 'No posts match' : 'Results for'} “{search}”
+              {activeCategory && <> in {activeCategory.name}</>} · <a href={href(1)}>Clear search</a>
+            </p>
+          )
+        }
 
-    {
-      featured && (
-        <a class="pub-featured" href={`/blog/${encodeURIComponent(featured.slug)}`}>
-          {featured.coverUrl && <img src={featured.coverUrl} alt="" loading="eager" />}
-          <h2>{featured.title}</h2>
-          {featured.excerpt && <p class="pub-subtitle">{featured.excerpt}</p>}
-        </a>
-      )
-    }
+        {
+          featured && (
+            <a class="featured-post" href={`/blog/${encodeURIComponent(featured.slug)}`}>
+              <div>
+                <p class="post-meta-line">
+                  <span class="cat">Featured</span>
+                  {featured.categories[0] && <span>{featured.categories[0].name}</span>}
+                  {featured.publishedAt && <span>{formatDate(featured.publishedAt)}</span>}
+                </p>
+                <h2>{featured.title}</h2>
+                {featured.excerpt && <p>{preview(featured.excerpt, undefined, 200)}</p>}
+                <span class="text-link">Read the post</span>
+              </div>
+              {featured.coverUrl && <img src={featured.coverUrl} alt="" width="1080" height="675" loading="eager" />}
+            </a>
+          )
+        }
 
-    <div class="pub-list">
-      {rest.filter(Boolean).map(post => <PostRow post={post!} />)}
-    </div>
+        {
+          rest.length > 0 && (
+            <div class="post-grid">
+              {rest.map(post => (
+                <a class="post-card" href={`/blog/${encodeURIComponent(post.slug)}`}>
+                  {post.coverUrl ? (
+                    <img src={post.coverUrl} alt="" width="600" height="400" loading="lazy" />
+                  ) : (
+                    <span class="cover-empty" />
+                  )}
+                  <p class="post-meta-line">
+                    {post.categories[0] && <span class="cat">{post.categories[0].name}</span>}
+                    {post.publishedAt && <span>{formatDate(post.publishedAt)}</span>}
+                  </p>
+                  <h3>{post.title}</h3>
+                  {post.excerpt && <p>{preview(post.excerpt, undefined, 120)}</p>}
+                </a>
+              ))}
+            </div>
+          )
+        }
 
-    {posts.length === 0 && !search && <p class="lede center">No posts published yet.</p>}
+        {
+          posts.length === 0 && !search && (
+            <div class="empty-state">
+              <h2>{activeCategory ? `Nothing in ${activeCategory.name} yet` : 'No posts yet'}</h2>
+              <p>New guides and stories will appear here as soon as they are published.</p>
+              {activeCategory && (
+                <a class="btn btn--ghost btn--sm" href="/blog">
+                  See every post
+                </a>
+              )}
+            </div>
+          )
+        }
 
-    {
-      (page > 1 || result?.hasMore) && (
-        <nav class="pager">
-          {page > 1 && <a href={href(page - 1)}>← Newer</a>}
-          <span class="muted small">Page {page}</span>
-          {result?.hasMore && <a href={href(page + 1)}>Older →</a>}
-        </nav>
-      )
-    }
+        {
+          (page > 1 || result?.hasMore) && (
+            <nav class="pager" aria-label="Pages">
+              {page > 1 ? <a class="text-link" href={href(page - 1)}>Newer posts</a> : <span />}
+              <span class="muted mono">Page {page}</span>
+              {result?.hasMore ? <a class="text-link" href={href(page + 1)}>Older posts</a> : <span />}
+            </nav>
+          )
+        }
+      </div>
+    </section>
   </main>
 </Base>

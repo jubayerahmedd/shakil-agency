@@ -1,0 +1,138 @@
+---
+/**
+ * One use case (`src/content/use-cases.ts`). STATIC: one file per entry,
+ * built from `getStaticPaths`.
+ */
+import CtaBand from '../../components/CtaBand.astro';
+import Placeholder from '../../components/Placeholder.astro';
+import Shot from '../../components/Shot.astro';
+import {FEATURES} from '../../content/features';
+import {LINKS} from '../../content/site';
+import {USE_CASES, type UseCase} from '../../content/use-cases';
+import Base from '../../layouts/Base.astro';
+import {staticContext} from '../../server/page';
+
+export const prerender = true;
+
+export function getStaticPaths() {
+  return USE_CASES.map(useCase => ({params: {slug: useCase.slug}, props: {useCase}}));
+}
+
+const {useCase} = Astro.props as {useCase: UseCase};
+const {site, viewer} = await staticContext(Astro.request);
+const features = useCase.features
+  .map(id => FEATURES.find(feature => feature.id === id))
+  .filter(feature => feature !== undefined);
+const others = USE_CASES.filter(other => other.slug !== useCase.slug);
+---
+
+<Base site={site} viewer={viewer} isStatic title={useCase.seo.title} description={useCase.seo.description}>
+  <main>
+    <section class="hero" aria-labelledby="case-title">
+      <div class="container">
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <a href="/use-cases">Use cases</a> / {useCase.name}
+        </nav>
+        <div class="hero__grid">
+          <div>
+            <h1 id="case-title" class="reveal" style="--i: 0">{useCase.title}</h1>
+            <p class="lead reveal" style="--i: 1">{useCase.lead}</p>
+            <div class="btn-row reveal" style="--i: 2">
+              <a class="btn btn--lg" href={LINKS.start}>Start free trial</a>
+              <a class="btn btn--ghost btn--lg" href={LINKS.demo}>Book a demo</a>
+            </div>
+          </div>
+          <div>
+            <Shot id={useCase.image.id} alt={useCase.image.alt} priority width={1000} />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="pains-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="pains-title">What changes</h2>
+          <p class="lead">The problems we hear most, and how they go away.</p>
+        </div>
+        <ul class="pains">
+          {
+            useCase.pains.map(item => (
+              <li>
+                <span class="pain">{item.pain}</span>
+                <span class="fix">{item.fix}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </section>
+
+    <section class="block block--ruled" aria-labelledby="setup-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="setup-title">How you would set it up</h2>
+        </div>
+        <ol class="steps">
+          {
+            useCase.setup.map(step => (
+              <li>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+    </section>
+
+    <section class="block block--ruled" aria-labelledby="quote-title">
+      <div class="container voices">
+        <figure class="voice-lead">
+          <h2 id="quote-title" class="mono muted">In their words</h2>
+          <Placeholder label="Sample quote: replace with a real customer" />
+          <blockquote>
+            <p>“{useCase.quote.text}”</p>
+          </blockquote>
+          <figcaption class="who">
+            <span><b>{useCase.quote.name}</b><span>{useCase.quote.role}</span></span>
+          </figcaption>
+        </figure>
+        <div>
+          <h2 class="mono muted">The features that do the work</h2>
+          <ul class="case-features">
+            {
+              features.map(feature => (
+                <li>
+                  <a href={`/features#${feature.id}`}>{feature.name}</a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="block block--ruled" aria-labelledby="others-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="others-title">Other ways people use it</h2>
+        </div>
+        <ul class="other-cases">
+          {
+            others.map(other => (
+              <li>
+                <a href={`/use-cases/${other.slug}`}>
+                  <b>{other.name}</b>
+                  {other.summary}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </section>
+
+    <CtaBand title={`Start building for ${useCase.name.toLowerCase()}`} body="Free to try. Set it up in an afternoon, or let us walk you through it on a call." />
+  </main>
+</Base>

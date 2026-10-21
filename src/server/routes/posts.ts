@@ -8,7 +8,8 @@ import {publicGet} from '../../platform/api';
 /**
  * The community's blog, from the PUBLIC API (`/api/public/blog/...`):
  *
- *   GET /site-api/posts?page=&search=&perPage=   published posts, newest first
+ *   GET /site-api/posts?page=&search=&perPage=&category=   published posts, newest first
+ *   GET /site-api/posts/categories               the blog's categories (for filters)
  *   GET /site-api/posts/:slug                    one post (HTML sanitized here)
  *   GET /site-api/posts/:slug/related            up to 3 related posts
  *
@@ -58,14 +59,17 @@ const listQuery = validator('query', value => {
     page: num(value.page, 1),
     perPage: Math.min(50, num(value.perPage, 10)),
     search: typeof value.search === 'string' ? value.search.trim().slice(0, 100) : '',
+    /** A category id (`/blog?category=12`); 0 = every category. */
+    category: num(value.category, 0),
   };
 });
 
 export const postRoutes = new Hono()
   .get('/', listQuery, async c => {
-    const {page, perPage, search} = c.req.valid('query');
+    const {page, perPage, search, category} = c.req.valid('query');
     const params = new URLSearchParams({page: String(page), per_page: String(perPage)});
     if (search) params.set('search', search);
+    if (category) params.set('categoryId', String(category));
     const raw = await publicGet<{data?: unknown; meta?: {hasMore?: boolean; lastPage?: number}}>(
       c.req.url,
       `/blog/post/all-posts?${params}`,
@@ -77,6 +81,14 @@ export const postRoutes = new Hono()
       hasMore: Boolean(raw?.meta?.hasMore ?? (raw?.meta?.lastPage ?? 1) > page),
     };
     return c.json(result);
+  })
+
+  // Registered before `/:slug`, so `categories` is never read as a slug.
+  .get('/categories', async c => {
+    const raw = await publicGet<{categories?: unknown}>(c.req.url, '/blog/options', {ttlSeconds: 60}).catch(
+      () => null
+    );
+    return c.json({categories: list<PostTerm>(raw?.categories).slice(0, 30).map(toTerm)});
   })
 
   .get('/:slug', async c => {

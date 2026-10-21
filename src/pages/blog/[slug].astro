@@ -63,9 +63,12 @@ const name = site?.name ?? 'Community';
 
         {viewer.state !== 'member' && (
           <aside class="article-cta">
-            <h2>Enjoyed this? Join {name}</h2>
-            <p class="muted">Get the conversation, the events and every new post.</p>
-            <a class="button" href={`/register?redirectTo=${encodeURIComponent(Astro.url.pathname)}`}>Join for free</a>
+            <h2>Run your own community on {name}</h2>
+            <p class="muted">Spaces, courses, events and memberships in one place. Free to try.</p>
+            <div class="btn-row">
+              <a class="btn" href="/join">Start free trial</a>
+              <a class="btn btn--ghost" href="/features">See the features</a>
+            </div>
           </aside>
         )}
 
@@ -76,11 +79,11 @@ const name = site?.name ?? 'Community';
           </section>
         )}
 
-        <p><a href="/blog">← All posts</a></p>
+        <p><a class="text-link" href="/blog">All posts</a></p>
       </main>
     </Base>
   ) : (
-    <Base site={site} viewer={viewer} title="Page not found">
+    <Base site={site} viewer={viewer} title="Page not found" noindex>
       <NotFound site={site} />
     </Base>
   )

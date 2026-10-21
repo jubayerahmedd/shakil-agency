@@ -5,6 +5,7 @@ import {type ChangeEvent, type FormEvent, useState} from 'react';
 import {logout, storeFile} from '../platform/browser';
 import {
   type Abilities,
+  type InquiriesPage,
   type Job,
   JOB_TYPES,
   type JobsPage,
@@ -88,7 +89,13 @@ const NAV_GROUPS: {
       {to: '/members', label: 'Members'},
     ],
   },
-  {label: 'Manage', items: [{to: '/jobs', label: 'Jobs', ability: 'manageJobs'}]},
+  {
+    label: 'Manage',
+    items: [
+      {to: '/inquiries', label: 'Inquiries', ability: 'manageInquiries'},
+      {to: '/jobs', label: 'Jobs', ability: 'manageJobs'},
+    ],
+  },
 ];
 
 /** The screen's title for the top bar: the deepest sidebar item it is under. */
@@ -238,6 +245,7 @@ const overviewRoute = createRoute({
     const me = useMe();
     const viewer = me.data?.viewer;
     const manageJobs = me.data?.abilities.manageJobs ?? false;
+    const manageInquiries = me.data?.abilities.manageInquiries ?? false;
     const health = useQuery({
       queryKey: ['health'],
       queryFn: () =>
@@ -254,6 +262,11 @@ const overviewRoute = createRoute({
       queryKey: ['jobs', 'manage', 'first'],
       queryFn: () => read<JobsPage>(api.jobs.manage.$get({query: {before: undefined}})),
       enabled: manageJobs,
+    });
+    const newInquiries = useQuery({
+      queryKey: ['inquiries', 'new', 'first'],
+      queryFn: () => read<InquiriesPage>(api.inquiries.manage.$get({query: {status: 'new', before: undefined}})),
+      enabled: manageInquiries,
     });
     const recent = uploads.data?.uploads.slice(0, 5) ?? [];
 
@@ -283,6 +296,13 @@ const overviewRoute = createRoute({
             value={pageCount(uploads.data?.uploads, Boolean(uploads.data?.nextBefore))}
             to="/uploads"
           />
+          {manageInquiries && (
+            <Stat
+              label="New inquiries"
+              value={pageCount(newInquiries.data?.inquiries, Boolean(newInquiries.data?.nextBefore))}
+              to="/inquiries"
+            />
+          )}
           {manageJobs && (
             <Stat
               label="Jobs"
@@ -745,9 +765,143 @@ const jobsRoute = createRoute({
   },
 });
 
+const TOPIC_LABELS: Record<string, string> = {
+  general: 'General question',
+  sales: 'Plans and pricing',
+  support: 'Help with a community',
+  partnership: 'Partnerships',
+  demo: 'Demo request',
+};
+
+/**
+ * Site admins: the contact form's messages and demo requests
+ * (`/site-api/inquiries`, `MANAGE_INQUIRIES`). Newest first; mark handled,
+ * reopen or delete, one row at a time.
+ */
+const inquiriesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/inquiries',
+  component: function Inquiries() {
+    const queryClient = useQueryClient();
+    const [status, setStatus] = useState<'' | 'new' | 'handled'>('new');
+    const inquiries = useInfiniteQuery({
+      queryKey: ['inquiries', 'list', status],
+      initialPageParam: undefined as string | undefined,
+      queryFn: ({pageParam}) =>
+        read<InquiriesPage>(api.inquiries.manage.$get({query: {status, before: pageParam}})),
+      getNextPageParam: last => (last.nextBefore ? String(last.nextBefore) : undefined),
+    });
+    const refresh = () => queryClient.invalidateQueries({queryKey: ['inquiries']});
+    const mark = useMutation({
+      mutationFn: ({id, next}: {id: number; next: string}) =>
+        read(api.inquiries[':id'].$patch({param: {id: String(id)}, json: {status: next}})),
+      onSuccess: refresh,
+    });
+    const remove = useMutation({
+      mutationFn: (id: number) => read(api.inquiries[':id'].$delete({param: {id: String(id)}})),
+      onSuccess: refresh,
+    });
+    const busyId = (mark.isPending && mark.variables?.id) || (remove.isPending && remove.variables) || null;
+    const rows = inquiries.data?.pages.flatMap(page => page.inquiries) ?? [];
+    const filters: {value: typeof status; label: string}[] = [
+      {value: 'new', label: 'New'},
+      {value: 'handled', label: 'Handled'},
+      {value: '', label: 'All'},
+    ];
+
+    return (
+      <div className="app-page">
+        <div className="app-page-head">
+          <div>
+            <h2>Inquiries</h2>
+            <p className="muted">
+              Messages and demo requests from the <a href="/contact">contact page</a>. Only site admins see this screen.
+            </p>
+          </div>
+          <div className="row-actions" role="group" aria-label="Show">
+            {filters.map(filter => (
+              <Button
+                key={filter.label}
+                size="sm"
+                variant={status === filter.value ? 'primary' : 'ghost'}
+                aria-pressed={status === filter.value}
+                onClick={() => setStatus(filter.value)}>
+                {filter.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {inquiries.error && <ErrorNote error={inquiries.error} />}
+        {inquiries.isPending && <p className="muted">Loading…</p>}
+        {rows.length === 0 && inquiries.isSuccess && (
+          <div className="app-empty">
+            <p className="muted">
+              {status === 'new' ? 'No new messages. You are all caught up.' : 'No messages here yet.'}
+            </p>
+            <a className="button ghost" href="/contact">
+              Open the contact page
+            </a>
+          </div>
+        )}
+        <ul className="files inquiry-list">
+          {rows.map(item => {
+            const busy = busyId === item.id;
+            return (
+              <li key={item.id} aria-busy={busy || undefined}>
+                <div>
+                  <strong>{item.name}</strong>
+                  <span className="meta">
+                    {TOPIC_LABELS[item.topic] ?? item.topic}
+                    {item.size ? ` · ${item.size} members` : ''}
+                    {item.company ? ` · ${item.company}` : ''} · {when(item.createdAt)}
+                  </span>
+                  <a href={`mailto:${item.email}`}>{item.email}</a>
+                  <p className="inquiry-message">{item.message}</p>
+                </div>
+                <div className="row-actions">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    pending={mark.isPending && mark.variables?.id === item.id}
+                    pendingLabel="Saving…"
+                    disabled={busy}
+                    onClick={() => mark.mutate({id: item.id, next: item.status === 'new' ? 'handled' : 'new'})}>
+                    {item.status === 'new' ? 'Mark handled' : 'Reopen'}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    pending={remove.isPending && remove.variables === item.id}
+                    pendingLabel="Deleting…"
+                    disabled={busy}
+                    onClick={() => window.confirm(`Delete the message from ${item.name}?`) && remove.mutate(item.id)}>
+                    Delete
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        {(mark.error || remove.error) && <ErrorNote error={(mark.error ?? remove.error)!} />}
+        {inquiries.hasNextPage && (
+          <Button
+            variant="ghost"
+            onClick={() => inquiries.fetchNextPage()}
+            pending={inquiries.isFetchingNextPage}
+            pendingLabel="Loading…">
+            Load more
+          </Button>
+        )}
+      </div>
+    );
+  },
+});
+
 export const routeTree = rootRoute.addChildren([
   overviewRoute,
   uploadsRoute,
   membersRoute,
+  inquiriesRoute,
   jobsRoute,
 ]);

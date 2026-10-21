@@ -1,0 +1,105 @@
+---
+/**
+ * Every feature in depth (`src/content/features.ts`). STATIC. A sticky index
+ * on the left (a row of chips on phones) links to each block's anchor; the
+ * current block is marked as you scroll.
+ */
+import CtaBand from '../components/CtaBand.astro';
+import PageHead from '../components/PageHead.astro';
+import Shot from '../components/Shot.astro';
+import {FEATURES, FEATURES_PAGE} from '../content/features';
+import {LINKS} from '../content/site';
+import Base from '../layouts/Base.astro';
+import {staticContext} from '../server/page';
+
+export const prerender = true;
+
+const {site, viewer} = await staticContext(Astro.request);
+---
+
+<Base site={site} viewer={viewer} isStatic title={FEATURES_PAGE.seo.title} description={FEATURES_PAGE.seo.description}>
+  <main>
+    <PageHead title={FEATURES_PAGE.title} lead={FEATURES_PAGE.lead}>
+      <div class="btn-row">
+        <a class="btn" href={LINKS.start}>Start free trial</a>
+        <a class="btn btn--ghost" href="/pricing">See pricing</a>
+      </div>
+    </PageHead>
+
+    <div class="block container feature-layout">
+      <nav class="feature-toc" aria-label="Features on this page">
+        <ol>
+          {
+            FEATURES.map(feature => (
+              <li>
+                <a href={`#${feature.id}`} data-toc={feature.id}>
+                  {feature.name}
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+      </nav>
+
+      <div>
+        {
+          FEATURES.map(feature => (
+            <section class="feature" id={feature.id} aria-labelledby={`${feature.id}-title`} data-feature>
+              <div class="feature__grid">
+                <div class="reveal">
+                  <h2 id={`${feature.id}-title`}>{feature.title}</h2>
+                  <p class="feature__lead">{feature.lead}</p>
+                  <ul class="ticks">
+                    {feature.bullets.map(bullet => (
+                      <li>{bullet}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div class="reveal" style="--i: 1">
+                  <Shot id={feature.image.id} alt={feature.image.alt} caption={feature.image.caption} width={1000} />
+                </div>
+              </div>
+              <dl class="feature__points">
+                {feature.points.map(point => (
+                  <div>
+                    <dt>{point.term}</dt>
+                    <dd>{point.detail}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))
+        }
+      </div>
+    </div>
+
+    <CtaBand
+      title="See it with your own content"
+      body="Start a free trial and set up your first space in minutes, or book a call and we will build a demo around your community."
+    />
+  </main>
+</Base>
+
+<script>
+  // Mark the index entry for the block in view.
+  const links = new Map(
+    [...document.querySelectorAll<HTMLAnchorElement>('[data-toc]')].map(link => [link.dataset.toc!, link])
+  );
+  if ('IntersectionObserver' in window && links.size) {
+    const observer = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          for (const [id, link] of links) {
+            const on = id === entry.target.id;
+            link.classList.toggle('is-current', on);
+            if (on) link.setAttribute('aria-current', 'location');
+            else link.removeAttribute('aria-current');
+          }
+        }
+      },
+      {rootMargin: '-35% 0px -60% 0px'}
+    );
+    document.querySelectorAll<HTMLElement>('[data-feature]').forEach(section => observer.observe(section));
+  }
+</script>

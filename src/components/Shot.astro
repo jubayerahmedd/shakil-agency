@@ -1,0 +1,36 @@
+---
+/**
+ * A photo in a hairline frame with an optional caption. Photos are Unsplash
+ * placeholders (`photo()` in `content/site.ts`): swap the id for your own image
+ * or a real product screenshot. `priority` for the one image above the fold.
+ */
+import {photo} from '../content/site';
+
+interface Props {
+  id: string;
+  alt: string;
+  caption?: string;
+  shape?: 'default' | 'tall' | 'wide';
+  priority?: boolean;
+  width?: number;
+  class?: string;
+}
+
+const {id, alt, caption, shape = 'default', priority = false, width = 1200, class: className} = Astro.props;
+const ratio = shape === 'tall' ? 5 / 4 : shape === 'wide' ? 9 / 16 : 3 / 4;
+---
+
+<figure class:list={['shot', shape !== 'default' && `shot--${shape}`, className]}>
+  <img
+    src={photo(id, width)}
+    srcset={`${photo(id, Math.round(width / 2))} ${Math.round(width / 2)}w, ${photo(id, width)} ${width}w`}
+    sizes="(max-width: 60rem) 100vw, 50vw"
+    alt={alt}
+    width={width}
+    height={Math.round(width * ratio)}
+    loading={priority ? 'eager' : 'lazy'}
+    fetchpriority={priority ? 'high' : undefined}
+    decoding="async"
+  />
+  {caption && <figcaption><span class="accent-mark" aria-hidden="true"></span>{caption}</figcaption>}
+</figure>

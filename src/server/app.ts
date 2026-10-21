@@ -4,6 +4,7 @@ import type {Abilities} from '../lib/types';
 import {config} from '../platform/config';
 import {problem, sameOrigin} from '../platform/guards';
 import {isPreview} from '../platform/api';
+import {inquiryRoutes, MANAGE_INQUIRIES} from './routes/inquiries';
 import {jobRoutes, MANAGE_JOBS} from './routes/jobs';
 import {memberRoutes} from './routes/members';
 import {postRoutes} from './routes/posts';
@@ -27,6 +28,7 @@ import {getViewer, getViewerPermissions, grants} from '../platform/viewer';
  *   *    /jobs/...      the job board (Site Database)          routes/jobs.ts
  *   GET  /members      members directory (Community Key)      routes/members.ts
  *   *    /uploads       a member's files (Site Database)       routes/uploads.ts
+ *   *    /inquiries     contact form messages (Site Database)  routes/inquiries.ts
  *
  * Add a feature as a new `routes/<name>.ts` and one `.route()` line below,
  * CHAINED so `AppType` carries every route to the typed client. Errors are
@@ -55,7 +57,10 @@ export const app = new Hono()
     ]);
     c.header('Cache-Control', 'private, no-store');
     const permissions = viewer.state === 'member' ? perms : new Set<string>();
-    const abilities: Abilities = {manageJobs: grants(permissions, MANAGE_JOBS)};
+    const abilities: Abilities = {
+      manageJobs: grants(permissions, MANAGE_JOBS),
+      manageInquiries: grants(permissions, MANAGE_INQUIRIES),
+    };
     return c.json({viewer, abilities});
   })
 
@@ -64,6 +69,7 @@ export const app = new Hono()
   .route('/jobs', jobRoutes)
   .route('/members', memberRoutes)
   .route('/uploads', uploadRoutes)
+  .route('/inquiries', inquiryRoutes)
 
   .notFound(c => c.json(problem('not_found', 'No such Site API route.'), 404))
   .onError((err, c) => {

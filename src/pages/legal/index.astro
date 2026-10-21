@@ -1,0 +1,30 @@
+---
+/** The legal pages, listed. STATIC. (`/privacy` and `/terms` belong to the community app.) */
+import PageHead from '../../components/PageHead.astro';
+import {LEGAL} from '../../content/company';
+import Base from '../../layouts/Base.astro';
+import {staticContext} from '../../server/page';
+
+export const prerender = true;
+
+const {site, viewer} = await staticContext(Astro.request);
+---
+
+<Base site={site} viewer={viewer} isStatic title="Legal" description="Our privacy policy and terms of service.">
+  <main>
+    <PageHead title="Legal" lead="The policies that apply to this website and the platform." />
+    <section class="block block--tight">
+      <div class="container legal-index">
+        {
+          LEGAL.map(doc => (
+            <a href={`/legal/${doc.slug}`}>
+              <b>{doc.title}</b>
+              <span>{doc.seo.description}</span>
+              <span class="mono">Updated {doc.updated}</span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+  </main>
+</Base>

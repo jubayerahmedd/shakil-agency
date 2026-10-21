@@ -1,0 +1,71 @@
+---
+/**
+ * One legal document (`src/content/company.ts` → `LEGAL`), with a contents list.
+ * STATIC. Lives under `/legal/` because `/privacy` and `/terms` are the
+ * community app's own pages.
+ */
+import PageHead from '../../components/PageHead.astro';
+import Placeholder from '../../components/Placeholder.astro';
+import {LEGAL, type LegalDoc} from '../../content/company';
+import {SUPPORT_EMAIL, withName} from '../../content/site';
+import Base from '../../layouts/Base.astro';
+import {staticContext} from '../../server/page';
+
+export const prerender = true;
+
+export function getStaticPaths() {
+  return LEGAL.map(doc => ({params: {slug: doc.slug}, props: {doc}}));
+}
+
+const {doc} = Astro.props as {doc: LegalDoc};
+const {site, viewer} = await staticContext(Astro.request);
+const name = site?.name ?? 'Community';
+---
+
+<Base site={site} viewer={viewer} isStatic title={doc.seo.title} description={doc.seo.description}>
+  <main>
+    <PageHead title={doc.title} lead={`Last updated ${doc.updated}.`} crumbs={[{label: 'Legal', href: '/legal'}]} />
+    <div class="block container legal">
+      <nav class="legal-toc" aria-label="Contents">
+        <p>Contents</p>
+        <ol>
+          {
+            doc.sections.map(section => (
+              <li>
+                <a href={`#${section.id}`}>{section.heading}</a>
+              </li>
+            ))
+          }
+        </ol>
+      </nav>
+      <article class="legal-doc">
+        <Placeholder label="Draft legal text: have it reviewed before launch" />
+        <p class="lead" data-brand-text={doc.intro}>{withName(doc.intro, name)}</p>
+        {
+          doc.sections.map(section => (
+            <section id={section.id} aria-labelledby={`${section.id}-h`}>
+              <h2 id={`${section.id}-h`}>{section.heading}</h2>
+              {section.paragraphs.map(paragraph => (
+                <p data-brand-text={paragraph}>{withName(paragraph, name)}</p>
+              ))}
+              {section.list && (
+                <ul>
+                  {section.list.map(item => (
+                    <li>{item}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))
+        }
+        <section aria-labelledby="contact-h">
+          <h2 id="contact-h">Contact</h2>
+          <p>
+            Questions about this document? Email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> or use the
+            <a href="/contact">contact page</a>.
+          </p>
+        </section>
+      </article>
+    </div>
+  </main>
+</Base>

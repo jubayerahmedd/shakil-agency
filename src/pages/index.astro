@@ -1,16 +1,19 @@
 ---
 /**
  * The home page: PRERENDERED (built once, served as a static file, no server
- * work per visit) and made of sections. Words in `src/content/site.ts`.
+ * work per visit). Words in `src/content/site.ts`, plans in `pricing.ts`.
  *
- * What changes often is filled in by the browser after load, from the Site API:
- *   - the visitor (`<Base isStatic>`): members see "Open the community"
- *     (`data-member-only`), guests "Join" (`data-guest-only`)
- *   - latest posts and open roles (`data-live` sections, below)
- * A section with no data stays hidden.
+ * Shape (Split Studio): a split hero, who it is for, four alternating
+ * claim/photo rows, three steps, testimonials, a plan preview, the FAQ and a
+ * closing call to action. The latest blog posts are filled in by the browser
+ * from the Site API after load; with none, that section stays hidden.
  */
-import BrandMark from '../components/BrandMark.astro';
-import {HOME, withName} from '../content/site';
+import CtaBand from '../components/CtaBand.astro';
+import Faq from '../components/Faq.astro';
+import Placeholder from '../components/Placeholder.astro';
+import PlanCards from '../components/PlanCards.astro';
+import Shot from '../components/Shot.astro';
+import {HOME, LINKS, photo, withName} from '../content/site';
 import Base from '../layouts/Base.astro';
 import {staticContext} from '../server/page';
 
@@ -18,80 +21,169 @@ export const prerender = true;
 
 const {site, viewer} = await staticContext(Astro.request);
 const name = site?.name ?? 'Community';
+const t = HOME.testimonials;
 ---
 
-<Base site={site} viewer={viewer} isStatic>
+<Base site={site} viewer={viewer} isStatic title={HOME.seo.title} description={HOME.seo.description}>
   <main>
-    <section class="hero">
-      <div class="wrap center">
-        <BrandMark site={site} size={72} />
-        <p class="eyebrow" data-brand-text={HOME.hero.eyebrow}>{withName(HOME.hero.eyebrow, name)}</p>
-        <h1>{HOME.hero.title}</h1>
-        <p class="lede">{HOME.hero.body}</p>
-        {/* Join, Log in and the feed are the community app: plain links, always. */}
-        <div class="actions" data-guest-only>
-          <a class="button" href="/register" data-brand-text="Join {name}">Join {name}</a>
-          <a class="button ghost" href="/login">Log in</a>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero__grid">
+        <div>
+          <h1 id="hero-title" class="reveal" style="--i: 0">{HOME.hero.title}</h1>
+          <p class="lead reveal" style="--i: 1">{HOME.hero.body}</p>
+          <div class="btn-row reveal" style="--i: 2" data-guest-only>
+            <a class="btn btn--lg" href={LINKS.start}>Start free trial</a>
+            <a class="btn btn--ghost btn--lg" href={LINKS.demo}>Book a demo</a>
+          </div>
+          <div class="btn-row" data-member-only hidden>
+            <a class="btn btn--lg" href={LINKS.community}>Open the community</a>
+            <a class="btn btn--ghost btn--lg" href="/features">See what is new</a>
+          </div>
+          <p class="hero__note reveal" style="--i: 3">{HOME.hero.note}</p>
         </div>
-        <div class="actions" data-member-only hidden>
-          <a class="button" href="/feeds">Open the community</a>
-          <a class="button ghost" href="/portal">Your dashboard</a>
+        <div>
+          <Shot {...HOME.hero.image} shape="tall" priority width={1000} />
         </div>
       </div>
     </section>
 
-    <section class="wrap section">
-      <h2 class="center">{HOME.features.title}</h2>
-      <div class="grid grid-3">
+    <section class="audience" aria-label="Who it is for">
+      <div class="container audience__inner">
+        <p class="audience__label">{HOME.audience.label}</p>
+        <ul class="audience__list">
+          {HOME.audience.items.map(item => <li>{item}</li>)}
+        </ul>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="intro-title">
+      <div class="container">
+        <div class="section-intro section-intro--split">
+          <h2 id="intro-title">{HOME.intro.title}</h2>
+          <p class="lead" data-brand-text={HOME.intro.body}>{withName(HOME.intro.body, name)}</p>
+        </div>
         {
-          HOME.features.items.map(feature => (
-            <div class="card">
-              <h3>{feature.title}</h3>
-              <p class="muted">{feature.body}</p>
-            </div>
+          HOME.rows.map((row, i) => (
+            <article class:list={['split', i % 2 === 1 && 'split--flip']}>
+              <div class="split__text reveal">
+                <h3>{row.title}</h3>
+                <p>{row.body}</p>
+                <ul class="ticks">
+                  {row.points.map(point => (
+                    <li>{point}</li>
+                  ))}
+                </ul>
+                <a class="text-link" href={row.link.href}>
+                  {row.link.label}
+                </a>
+              </div>
+              <div class="reveal" style="--i: 1">
+                <Shot id={row.image.id} alt={row.image.alt} />
+              </div>
+            </article>
           ))
         }
       </div>
     </section>
 
-    <section class="wrap section" data-live="posts" hidden>
-      <div class="section-head">
-        <h2>Latest from the blog</h2>
-        <a href="/blog">All posts →</a>
-      </div>
-      <div class="grid grid-3" data-list></div>
-    </section>
-
-    <section class="wrap section" data-live="jobs" hidden>
-      <div class="section-head">
-        <h2>Open roles</h2>
-        <a href="/jobs">All jobs →</a>
-      </div>
-      <ul class="job-list" data-list></ul>
-    </section>
-
-    <section class="wrap narrow section center">
-      <blockquote class="quote">
-        <p>“{HOME.quote.text}”</p>
-        <cite>— {HOME.quote.author}</cite>
-      </blockquote>
-    </section>
-
-    <section class="wrap section" data-guest-only>
-      <div class="card cta">
-        <div>
-          <h2 data-brand-text={HOME.cta.title}>{withName(HOME.cta.title, name)}</h2>
-          <p class="muted">{HOME.cta.body}</p>
+    <section class="block block--ruled" aria-labelledby="steps-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="steps-title">{HOME.steps.title}</h2>
+          <p class="lead">{HOME.steps.body}</p>
         </div>
-        <a class="button" href="/register">Join now</a>
+        <ol class="steps">
+          {
+            HOME.steps.items.map(step => (
+              <li>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </li>
+            ))
+          }
+        </ol>
       </div>
     </section>
+
+    <section class="block block--ruled" aria-labelledby="voices-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="voices-title">{t.title}</h2>
+        </div>
+        <Placeholder label="Sample testimonials: replace with real members' words" />
+        <div class="voices">
+          <figure class="voice-lead">
+            <blockquote>
+              <p>“{t.lead.quote}”</p>
+            </blockquote>
+            <figcaption class="who">
+              <img src={photo(t.lead.photo, 160)} alt="" width="44" height="44" loading="lazy" />
+              <span><b>{t.lead.name}</b><span>{t.lead.role}</span></span>
+            </figcaption>
+          </figure>
+          <div class="voice-side">
+            {
+              t.more.map(item => (
+                <figure class="voice">
+                  <blockquote>
+                    <p>“{item.quote}”</p>
+                  </blockquote>
+                  <figcaption class="who">
+                    <img src={photo(item.photo, 160)} alt="" width="44" height="44" loading="lazy" />
+                    <span>
+                      <b>{item.name}</b>
+                      <span>{item.role}</span>
+                    </span>
+                  </figcaption>
+                </figure>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block block--ruled" aria-labelledby="pricing-title">
+      <div class="container">
+        <div class="section-intro section-intro--split">
+          <h2 id="pricing-title">{HOME.pricing.title}</h2>
+          <div>
+            <p class="lead">{HOME.pricing.body}</p>
+            <p><a class="text-link" href="/pricing">Compare every feature</a></p>
+          </div>
+        </div>
+        <PlanCards id="home" compact />
+      </div>
+    </section>
+
+    <section class="block block--ruled" data-live="posts" hidden aria-labelledby="posts-title">
+      <div class="container">
+        <div class="section-intro section-intro--split">
+          <h2 id="posts-title">From the blog</h2>
+          <p><a class="text-link" href="/blog">All posts</a></p>
+        </div>
+        <div class="post-grid" data-list></div>
+      </div>
+    </section>
+
+    <section class="block block--ruled" aria-labelledby="faq-title">
+      <div class="container faq-layout">
+        <div class="section-intro">
+          <h2 id="faq-title">{HOME.faq.title}</h2>
+          <p>{HOME.faq.body}</p>
+          <p><a class="text-link" href="/contact">Contact us</a></p>
+        </div>
+        <Faq items={HOME.faq.items} />
+      </div>
+    </section>
+
+    <CtaBand title={HOME.cta.title} body={HOME.cta.body} />
   </main>
 </Base>
 
 <script>
   import {formatDate} from '../lib/format';
-  import type {JobsPage, PostsPage} from '../lib/types';
+  import type {PostsPage} from '../lib/types';
 
   /** One element with text: never HTML from an answer. */
   const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = '') => {
@@ -101,54 +193,38 @@ const name = site?.name ?? 'Community';
     return node;
   };
 
-  async function live<T>(name: string, path: string, render: (data: T, list: HTMLElement) => number) {
-    const section = document.querySelector<HTMLElement>(`[data-live="${name}"]`);
+  async function livePosts() {
+    const section = document.querySelector<HTMLElement>('[data-live="posts"]');
     const list = section?.querySelector<HTMLElement>('[data-list]');
     if (!section || !list) return;
     try {
-      const res = await fetch(path, {headers: {accept: 'application/json'}});
+      const res = await fetch('/site-api/posts?perPage=3', {headers: {accept: 'application/json'}});
       if (!res.ok) return;
-      if (render((await res.json()) as T, list) > 0) section.hidden = false;
+      const data = (await res.json()) as PostsPage;
+      for (const post of data.posts) {
+        const card = el('a', 'post-card');
+        card.href = `/blog/${encodeURIComponent(post.slug)}`;
+        if (post.coverUrl) {
+          const img = el('img');
+          img.src = post.coverUrl;
+          img.alt = '';
+          img.loading = 'lazy';
+          card.append(img);
+        } else {
+          card.append(el('span', 'cover-empty'));
+        }
+        const meta = el('p', 'post-meta-line');
+        if (post.categories[0]) meta.append(el('span', 'cat', post.categories[0].name));
+        if (post.publishedAt) meta.append(el('span', '', formatDate(post.publishedAt)));
+        card.append(meta, el('h3', '', post.title));
+        if (post.excerpt) card.append(el('p', '', post.excerpt.slice(0, 120)));
+        list.append(card);
+      }
+      if (data.posts.length > 0) section.hidden = false;
     } catch {
       // The section stays hidden: the page is complete without it.
     }
   }
 
-  void live<PostsPage>('posts', '/site-api/posts?perPage=3', (data, list) => {
-    for (const post of data.posts) {
-      const card = el('a', 'post-card');
-      card.href = `/blog/${encodeURIComponent(post.slug)}`;
-      if (post.coverUrl) {
-        const img = el('img', 'cover');
-        img.src = post.coverUrl;
-        img.alt = '';
-        img.loading = 'lazy';
-        card.append(img);
-      } else {
-        card.append(el('span', 'cover cover-empty'));
-      }
-      const body = el('div', 'post-card-body');
-      body.append(el('h3', '', post.title));
-      if (post.excerpt) body.append(el('p', 'muted small', post.excerpt.slice(0, 110)));
-      body.append(el('p', 'meta', formatDate(post.publishedAt)));
-      card.append(body);
-      list.append(card);
-    }
-    return data.posts.length;
-  });
-
-  void live<JobsPage>('jobs', '/site-api/jobs', (data, list) => {
-    for (const job of data.jobs.slice(0, 3)) {
-      const row = el('a', 'job-row');
-      row.href = `/jobs/${encodeURIComponent(job.slug)}`;
-      const text = el('div');
-      text.append(el('h3', '', job.title), el('p', 'muted', `${job.company} · ${job.location}`));
-      row.append(text);
-      if (job.remote) row.append(el('span', 'chip chip-tag', 'Remote'));
-      const item = el('li');
-      item.append(row);
-      list.append(item);
-    }
-    return Math.min(3, data.jobs.length);
-  });
+  void livePosts();
 </script>

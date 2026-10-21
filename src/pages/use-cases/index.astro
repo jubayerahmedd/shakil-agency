@@ -1,0 +1,46 @@
+---
+/** Every use case, one row each, linking to its page (`src/content/use-cases.ts`). STATIC. */
+import CtaBand from '../../components/CtaBand.astro';
+import PageHead from '../../components/PageHead.astro';
+import {photo} from '../../content/site';
+import {USE_CASES, USE_CASES_PAGE} from '../../content/use-cases';
+import Base from '../../layouts/Base.astro';
+import {staticContext} from '../../server/page';
+
+export const prerender = true;
+
+const {site, viewer} = await staticContext(Astro.request);
+---
+
+<Base site={site} viewer={viewer} isStatic title={USE_CASES_PAGE.seo.title} description={USE_CASES_PAGE.seo.description}>
+  <main>
+    <PageHead title={USE_CASES_PAGE.title} lead={USE_CASES_PAGE.lead} />
+
+    <section class="block block--tight" aria-label="Use cases">
+      <div class="container cases">
+        {
+          USE_CASES.map((useCase, i) => (
+            <a class="case-row" href={`/use-cases/${useCase.slug}`}>
+              <img
+                src={photo(useCase.image.id, 700)}
+                alt={useCase.image.alt}
+                width="700"
+                height="467"
+                loading={i === 0 ? 'eager' : 'lazy'}
+              />
+              <div>
+                <h2>{useCase.name}</h2>
+                <p>{useCase.summary}</p>
+              </div>
+              <span class="text-link" aria-hidden="true">
+                Read more
+              </span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+
+    <CtaBand title="Not sure which fits?" body="Tell us what you run today and we will show you how it would work here." />
+  </main>
+</Base>

@@ -71,3 +71,28 @@ model Upload {
   @@index([profileId, id])
   @@map("uploads")
 }
+
+/// A message from the website's contact form (`/contact`): a general question
+/// (`kind = contact`) or a request to book a demo (`kind = demo`). Sent by any
+/// visitor, signed in or not; read by site admins (`community:site:update`) in
+/// `/portal/inquiries`. The email is the address the sender typed so the team
+/// can reply: it is never shown on a public page.
+model Inquiry {
+  id        Int      @id @default(autoincrement())
+  /// `contact` or `demo`.
+  kind      String   @default("contact") @db.VarChar(10)
+  name      String   @db.VarChar(80)
+  email     String   @db.VarChar(254)
+  company   String?  @db.VarChar(120)
+  /// `general`, `sales`, `support`, `partnership` (contact) or `demo`.
+  topic     String   @default("general") @db.VarChar(20)
+  /// Demo requests: rough community size, e.g. `1-100`.
+  size      String?  @db.VarChar(20)
+  message   String   @db.VarChar(5000)
+  /// `new` or `handled`.
+  status    String   @default("new") @db.VarChar(10)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([status, id])
+  @@map("inquiries")
+}

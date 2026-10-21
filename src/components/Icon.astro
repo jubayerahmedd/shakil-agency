@@ -1,0 +1,31 @@
+---
+/** The site's few icons, one stroke voice (1.75, round caps). Decorative unless `label` is set. */
+interface Props {
+  name: 'check' | 'dash' | 'caret' | 'menu' | 'close';
+  class?: string;
+  label?: string;
+}
+
+const {name, class: className, label} = Astro.props;
+const paths: Record<Props['name'], string> = {
+  check: 'M4 10.5l4 4 8-9',
+  dash: 'M5 10h10',
+  caret: 'M5 8l5 5 5-5',
+  menu: 'M3 6h14M3 10h14M3 14h14',
+  close: 'M5 5l10 10M15 5L5 15',
+};
+---
+
+<svg
+  class={className}
+  viewBox="0 0 20 20"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.75"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  role={label ? 'img' : undefined}
+  aria-label={label}
+  aria-hidden={label ? undefined : 'true'}>
+  <path d={paths[name]} />
+</svg>

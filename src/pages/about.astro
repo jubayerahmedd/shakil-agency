@@ -1,32 +1,81 @@
 ---
-import BrandMark from '../components/BrandMark.astro';
-import {ABOUT, withName} from '../content/site';
+/** Our story, mission, principles and the team (`src/content/company.ts`). STATIC. */
+import CtaBand from '../components/CtaBand.astro';
+import PageHead from '../components/PageHead.astro';
+import Placeholder from '../components/Placeholder.astro';
+import Shot from '../components/Shot.astro';
+import {ABOUT, TEAM} from '../content/company';
+import {photo, withName} from '../content/site';
 import Base from '../layouts/Base.astro';
 import {staticContext} from '../server/page';
 
-// Static: built once, served as a file. The header fills the visitor in, in the browser.
 export const prerender = true;
 
 const {site, viewer} = await staticContext(Astro.request);
 const name = site?.name ?? 'Community';
 ---
 
-<Base site={site} viewer={viewer} isStatic title="About" description={withName(ABOUT.lede, name)}>
-  <main class="wrap narrow section">
-    <BrandMark site={site} size={56} />
-    <h1 data-brand-text={ABOUT.title}>{withName(ABOUT.title, name)}</h1>
-    <p class="lede">{withName(ABOUT.lede, name)}</p>
-    {
-      ABOUT.sections.map(section => (
-        <section class="about-section">
-          <h2>{section.heading}</h2>
-          <p>{withName(section.body, name)}</p>
-        </section>
-      ))
-    }
-    <div class="actions">
-      <a class="button" href="/register?redirectTo=%2Fabout" data-brand-text="Join {name}">Join {name}</a>
-      <a class="button ghost" href="/blog">Read the blog</a>
-    </div>
+<Base site={site} viewer={viewer} isStatic title={ABOUT.seo.title} description={ABOUT.seo.description}>
+  <main>
+    <PageHead title={ABOUT.title} lead={ABOUT.lead} />
+
+    <section class="block" aria-labelledby="story-title">
+      <div class="container story">
+        <div class="reveal">
+          <Shot {...ABOUT.storyImage} shape="tall" width={900} />
+        </div>
+        <div class="story__text">
+          <h2 id="story-title">Our story</h2>
+          <Placeholder label="Sample story: tell your own" />
+          {ABOUT.story.map(paragraph => <p data-brand-text={paragraph}>{withName(paragraph, name)}</p>)}
+        </div>
+      </div>
+    </section>
+
+    <section class="block block--ruled" aria-labelledby="mission-title">
+      <div class="container">
+        <h2 id="mission-title" class="mission">{ABOUT.mission}</h2>
+        <dl class="principles">
+          {
+            ABOUT.principles.map(item => (
+              <div>
+                <dt>{item.term}</dt>
+                <dd>{item.detail}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+    </section>
+
+    <section class="block block--ruled" aria-labelledby="team-title">
+      <div class="container">
+        <div class="section-intro section-intro--split">
+          <h2 id="team-title">The team</h2>
+          <p class="lead">Builders, designers and community people. Most of us have run a community of our own.</p>
+        </div>
+        <Placeholder label="Sample team: add your people and photos" />
+        <ul class="team">
+          {
+            TEAM.map(person => (
+              <li>
+                <img src={photo(person.photo, 600)} alt={`Portrait of ${person.name}`} width="600" height="750" loading="lazy" />
+                <b>{person.name}</b>
+                <span>{person.role}</span>
+                <p>{person.bio}</p>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </section>
+
+    <section class="block block--tight block--ruled" aria-label="Where we work">
+      <div class="container">
+        <Shot id={ABOUT.officeImage.id} alt={ABOUT.officeImage.alt} shape="wide" width={1600} />
+      </div>
+    </section>
+
+    <CtaBand title="Build your community with us" body="Start a free trial, or come and say hello. We read every message." />
   </main>
 </Base>

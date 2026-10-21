@@ -1,0 +1,320 @@
+---
+/**
+ * Contact and "Book a demo" (`/contact`, `/contact?type=demo`). STATIC page;
+ * the form sends to `POST /site-api/inquiries`, which stores it in the Site
+ * Database for site admins to read in `/portal/inquiries`.
+ *
+ * Validation is in place (AGENTS.md "Buttons and forms"): the same rules as
+ * the server (`src/lib/inquiry.ts`), errors under each field on blur or
+ * submit, never a browser bubble.
+ */
+import PageHead from '../components/PageHead.astro';
+import {COMMUNITY_SIZES, INQUIRY_LIMITS, INQUIRY_TOPICS} from '../lib/inquiry';
+import {LINKS, SUPPORT_EMAIL} from '../content/site';
+import Base from '../layouts/Base.astro';
+import {staticContext} from '../server/page';
+
+export const prerender = true;
+
+const {site, viewer} = await staticContext(Astro.request);
+---
+
+<Base
+  site={site}
+  viewer={viewer}
+  isStatic
+  title="Contact and demos"
+  description="Ask a question, get help with your community, or book a live demo with our team.">
+  <main>
+    <PageHead
+      title="Talk to a person, not a ticket queue"
+      lead="Ask about plans, get help with your community, or book a 30-minute demo. We usually reply within one working day."
+    />
+
+    <section class="block block--tight">
+      <div class="container contact">
+        <div>
+          <form class="contact-form" novalidate data-contact-form>
+            <fieldset class="kind-switch">
+              <legend>What do you need?</legend>
+              <label><input type="radio" name="kind" value="contact" checked /> Message us</label>
+              <label><input type="radio" name="kind" value="demo" /> Book a demo</label>
+            </fieldset>
+
+            <p class="muted" data-kind-intro="contact">Tell us what is on your mind and we will reply by email.</p>
+            <p class="muted" data-kind-intro="demo" hidden>
+              Tell us about your community and we will email you a few times to choose from for a 30-minute call.
+            </p>
+
+            <div class="form-grid">
+              <div class="field" data-field="name">
+                <label for="f-name">Your name</label>
+                <input id="f-name" name="name" autocomplete="name" aria-describedby="f-name-error" />
+                <p class="field-error" id="f-name-error" role="alert" hidden></p>
+              </div>
+              <div class="field" data-field="email">
+                <label for="f-email">Email</label>
+                <input
+                  id="f-email"
+                  name="email"
+                  inputmode="email"
+                  autocomplete="email"
+                  placeholder="name@example.com"
+                  aria-describedby="f-email-error"
+                />
+                <p class="field-error" id="f-email-error" role="alert" hidden></p>
+              </div>
+              <div class="field full" data-field="company">
+                <label for="f-company">Business or community name <span class="muted">(optional)</span></label>
+                <input id="f-company" name="company" autocomplete="organization" aria-describedby="f-company-error" />
+                <p class="field-error" id="f-company-error" role="alert" hidden></p>
+              </div>
+              <div class="field full" data-field="topic" data-kind-only="contact">
+                <label for="f-topic">What is it about?</label>
+                <select id="f-topic" name="topic" aria-describedby="f-topic-error">
+                  <option value="">Choose one</option>
+                  {INQUIRY_TOPICS.map(topic => <option value={topic.value}>{topic.label}</option>)}
+                </select>
+                <p class="field-error" id="f-topic-error" role="alert" hidden></p>
+              </div>
+              <div class="field full" data-field="size" data-kind-only="demo" hidden>
+                <label for="f-size">How big is your community?</label>
+                <select id="f-size" name="size" aria-describedby="f-size-error">
+                  <option value="">Choose one</option>
+                  {COMMUNITY_SIZES.map(size => <option value={size.value}>{size.label}</option>)}
+                </select>
+                <p class="field-error" id="f-size-error" role="alert" hidden></p>
+              </div>
+              <div class="field full" data-field="message">
+                <label for="f-message" data-kind-label="contact">Message</label>
+                <label for="f-message" data-kind-label="demo" hidden>What do you want to build?</label>
+                <textarea id="f-message" name="message" rows="6" aria-describedby="f-message-hint"></textarea>
+                <p class="field-hint" id="f-message-hint">At least {INQUIRY_LIMITS.messageMin} characters.</p>
+                <p class="field-error" id="f-message-error" role="alert" hidden></p>
+              </div>
+              <div class="hp" aria-hidden="true">
+                <label for="f-website">Leave this empty</label>
+                <input id="f-website" name="website" tabindex="-1" autocomplete="off" />
+              </div>
+            </div>
+
+            <p class="form-error" role="alert" data-form-error hidden></p>
+
+            <div class="form-foot">
+              <p>We use your details only to answer you. See our <a href="/legal/privacy-policy">privacy policy</a>.</p>
+              <button class="btn btn--lg" type="submit" data-submit>
+                <span data-submit-label>Send message</span>
+              </button>
+            </div>
+          </form>
+
+          <div class="form-done" role="status" tabindex="-1" data-form-done hidden>
+            <h2 data-done-title>Thanks, your message is on its way</h2>
+            <p data-done-body>We usually reply within one working day, to the email address you gave us.</p>
+            <p><button class="btn btn--ghost btn--sm" type="button" data-again>Send another message</button></p>
+          </div>
+        </div>
+
+        <aside class="contact-aside" aria-label="Other ways to reach us">
+          <section>
+            <h2>Support</h2>
+            <p>Already running a community with us? Email support and include your community’s address.</p>
+            <p><a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
+          </section>
+          <section>
+            <h2>Book a demo</h2>
+            <p>A 30-minute call with our team, built around your community: what you run today and what you want to launch.</p>
+            <p><a class="text-link" href="/contact?type=demo" data-pick-demo>Request a demo</a></p>
+          </section>
+          <section>
+            <h2>Try it yourself</h2>
+            <p>Every plan starts with a free trial. No card needed.</p>
+            <p><a class="text-link" href={LINKS.start}>Start free trial</a></p>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+</Base>
+
+<script>
+  import {
+    INQUIRY_FIELDS,
+    INQUIRY_TOPICS,
+    type InquiryInput,
+    type InquiryKind,
+    inquiryFieldError,
+  } from '../lib/inquiry';
+
+  const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
+  const done = document.querySelector<HTMLElement>('[data-form-done]');
+  const formError = document.querySelector<HTMLElement>('[data-form-error]');
+  const submit = document.querySelector<HTMLButtonElement>('[data-submit]');
+  const submitLabel = document.querySelector<HTMLElement>('[data-submit-label]');
+
+  if (form && done && formError && submit && submitLabel) {
+    /** Fields whose error is visible: shown after blur or a submit attempt. */
+    const shown = new Set<keyof InquiryInput>();
+    const control = (name: string) =>
+      form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+    const kind = (): InquiryKind => (control('kind')?.value === 'demo' ? 'demo' : 'contact');
+
+    const values = (): InquiryInput => ({
+      kind: kind(),
+      name: control('name')?.value ?? '',
+      email: control('email')?.value ?? '',
+      company: control('company')?.value ?? '',
+      topic: control('topic')?.value ?? '',
+      size: control('size')?.value ?? '',
+      message: control('message')?.value ?? '',
+    });
+
+    /** Show (or clear) one field's error, in place. */
+    const paint = (field: keyof InquiryInput, message?: string) => {
+      const input = control(field);
+      const error = document.getElementById(`f-${field}-error`);
+      const hint = document.getElementById(`f-${field}-hint`);
+      if (!input || !error) return;
+      error.textContent = message ?? '';
+      error.hidden = !message;
+      if (hint) hint.hidden = Boolean(message);
+      input.closest('.field')?.toggleAttribute('data-invalid', Boolean(message));
+      if (message) {
+        input.setAttribute('aria-invalid', 'true');
+        input.setAttribute('aria-describedby', error.id);
+      } else {
+        input.removeAttribute('aria-invalid');
+        input.setAttribute('aria-describedby', hint ? hint.id : error.id);
+      }
+    };
+    const check = (field: keyof InquiryInput) => {
+      if (shown.has(field)) paint(field, inquiryFieldError(field, values()));
+    };
+
+    for (const field of INQUIRY_FIELDS) {
+      const input = control(field);
+      input?.addEventListener('blur', () => {
+        // Never flag an empty field the visitor merely tabbed through before typing.
+        if (!input.value.trim() && !shown.has(field)) return;
+        shown.add(field);
+        check(field);
+      });
+      input?.addEventListener('input', () => check(field));
+      input?.addEventListener('change', () => check(field));
+    }
+
+    /** Switch between "Send a message" and "Book a demo". */
+    const applyKind = () => {
+      const current = kind();
+      for (const el of form.querySelectorAll<HTMLElement>('[data-kind-only]')) el.hidden = el.dataset.kindOnly !== current;
+      for (const el of form.querySelectorAll<HTMLElement>('[data-kind-intro]')) el.hidden = el.dataset.kindIntro !== current;
+      for (const el of form.querySelectorAll<HTMLElement>('[data-kind-label]')) el.hidden = el.dataset.kindLabel !== current;
+      submitLabel.textContent = current === 'demo' ? 'Request a demo' : 'Send message';
+      for (const field of ['topic', 'size', 'message'] as const) check(field);
+    };
+    form.querySelectorAll<HTMLInputElement>('input[name="kind"]').forEach(radio => radio.addEventListener('change', applyKind));
+
+    // `/contact?type=demo` and `/contact?topic=support` arrive pre-filled.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('type') === 'demo') {
+      const demo = form.querySelector<HTMLInputElement>('input[name="kind"][value="demo"]');
+      if (demo) demo.checked = true;
+    }
+    const topic = params.get('topic');
+    if (topic && INQUIRY_TOPICS.some(item => item.value === topic)) control('topic')!.value = topic;
+    applyKind();
+
+    document.querySelector<HTMLAnchorElement>('[data-pick-demo]')?.addEventListener('click', event => {
+      const demo = form.querySelector<HTMLInputElement>('input[name="kind"][value="demo"]');
+      // After a message was sent the form is gone: let the link reload the page instead.
+      if (!demo || form.hidden) return;
+      event.preventDefault();
+      demo.checked = true;
+      applyKind();
+      form.scrollIntoView({behavior: 'smooth', block: 'start'});
+      control('name')?.focus({preventScroll: true});
+    });
+
+    const setPending = (pending: boolean) => {
+      submit.disabled = pending;
+      submit.toggleAttribute('aria-busy', pending);
+      if (pending) {
+        const spinner = document.createElement('span');
+        spinner.className = 'spinner';
+        spinner.setAttribute('aria-hidden', 'true');
+        submit.prepend(spinner);
+        submitLabel.textContent = 'Sending…';
+      } else {
+        submit.querySelector('.spinner')?.remove();
+        submitLabel.textContent = kind() === 'demo' ? 'Request a demo' : 'Send message';
+      }
+    };
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      formError.hidden = true;
+      const input = values();
+      let first: keyof InquiryInput | undefined;
+      for (const field of INQUIRY_FIELDS) {
+        shown.add(field);
+        const message = inquiryFieldError(field, input);
+        paint(field, message);
+        if (message && !first) first = field;
+      }
+      if (first) {
+        control(first)?.focus();
+        return;
+      }
+
+      setPending(true);
+      try {
+        const res = await fetch('/site-api/inquiries', {
+          method: 'POST',
+          headers: {'content-type': 'application/json', accept: 'application/json'},
+          body: JSON.stringify({...input, website: control('website')?.value ?? ''}),
+        });
+        if (res.ok) {
+          const demo = input.kind === 'demo';
+          done.querySelector('[data-done-title]')!.textContent = demo
+            ? 'Thanks, we will be in touch to find a time'
+            : 'Thanks, your message is on its way';
+          done.querySelector('[data-done-body]')!.textContent = demo
+            ? `We will email ${input.email.trim()} with a few times for your demo, usually within one working day.`
+            : `We usually reply within one working day, to ${input.email.trim()}.`;
+          form.hidden = true;
+          done.hidden = false;
+          done.focus();
+          return;
+        }
+        const body = (await res.json().catch(() => null)) as {message?: string; field?: string} | null;
+        const field = body?.field as keyof InquiryInput | undefined;
+        if (res.status === 422 && field && INQUIRY_FIELDS.includes(field)) {
+          shown.add(field);
+          paint(field, body?.message);
+          control(field)?.focus();
+        } else {
+          formError.textContent =
+            res.status === 503
+              ? 'Messages cannot be received right now. Please email us instead; the address is beside this form.'
+              : (body?.message ?? 'Your message was not sent. Please try again.');
+          formError.hidden = false;
+        }
+      } catch {
+        formError.textContent = 'Your message was not sent: check your connection and try again.';
+        formError.hidden = false;
+      } finally {
+        setPending(false);
+      }
+    });
+
+    done.querySelector<HTMLButtonElement>('[data-again]')?.addEventListener('click', () => {
+      form.reset();
+      shown.clear();
+      for (const field of INQUIRY_FIELDS) paint(field);
+      applyKind();
+      done.hidden = true;
+      form.hidden = false;
+      control('name')?.focus();
+    });
+  }
+</script>

@@ -1,0 +1,27 @@
+---
+/**
+ * A "replace me" marker on made-up content (prices, testimonials, team). Shown
+ * ONLY in the editor Preview (`config.preview`): visitors to the live site never
+ * see it. Search `src/content/` for "PLACEHOLDER" to find what it marks.
+ */
+import {config} from '../platform/config';
+
+interface Props {
+  label?: string;
+}
+
+const {label = 'Sample content: replace before launch'} = Astro.props;
+---
+
+{config.preview && <p class="placeholder-note mono">{label}</p>}
+
+<style>
+  .placeholder-note {
+    display: inline-block;
+    margin: 0 0 var(--space-md);
+    padding: var(--space-2xs) var(--space-sm);
+    border: var(--rule-hair) dashed var(--color-accent);
+    border-radius: var(--radius-sm);
+    color: var(--color-accent);
+  }
+</style>

@@ -1,0 +1,25 @@
+---
+/** The closing call to action: start the trial (an App page) or book a demo. */
+import {LINKS} from '../content/site';
+
+interface Props {
+  title: string;
+  body: string;
+}
+
+const {title, body} = Astro.props;
+---
+
+<section class="cta-band" aria-labelledby="cta-title">
+  <div class="container cta-band__inner">
+    <div>
+      <h2 id="cta-title">{title}</h2>
+      <p>{body}</p>
+    </div>
+    <div class="btn-row">
+      <a class="btn btn--lg" href={LINKS.start} data-guest-only>Start free trial</a>
+      <a class="btn btn--lg" href={LINKS.community} data-member-only hidden>Open the community</a>
+      <a class="btn btn--ghost btn--lg" href={LINKS.demo}>Book a demo</a>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,32 @@
+---
+/** An inner page's heading: title on the left, the one-paragraph lede on the right. */
+interface Props {
+  title: string;
+  lead?: string;
+  crumbs?: {label: string; href: string}[];
+}
+
+const {title, lead, crumbs} = Astro.props;
+---
+
+<header class="page-head">
+  <div class="container">
+    {
+      crumbs && (
+        <nav class="crumbs" aria-label="Breadcrumb">
+          {crumbs.map((crumb, i) => (
+            <>
+              {i > 0 && ' / '}
+              <a href={crumb.href}>{crumb.label}</a>
+            </>
+          ))}
+        </nav>
+      )
+    }
+    <div class="page-head__grid">
+      <h1 class="reveal" style="--i: 0">{title}</h1>
+      {lead && <p class="lead reveal" style="--i: 1">{lead}</p>}
+      {Astro.slots.has('default') && <div class="page-head__actions reveal" style="--i: 2"><slot /></div>}
+    </div>
+  </div>
+</header>

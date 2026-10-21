@@ -1,0 +1,95 @@
+---
+/**
+ * Plans with a monthly / yearly switch, the full comparison table and the
+ * pricing FAQ (`src/content/pricing.ts`). STATIC.
+ */
+import CtaBand from '../components/CtaBand.astro';
+import Faq from '../components/Faq.astro';
+import Icon from '../components/Icon.astro';
+import PageHead from '../components/PageHead.astro';
+import PlanCards from '../components/PlanCards.astro';
+import {COMPARE, PLANS, PRICING_PAGE} from '../content/pricing';
+import Base from '../layouts/Base.astro';
+import {staticContext} from '../server/page';
+
+export const prerender = true;
+
+const {site, viewer} = await staticContext(Astro.request);
+---
+
+<Base site={site} viewer={viewer} isStatic title={PRICING_PAGE.seo.title} description={PRICING_PAGE.seo.description}>
+  <main>
+    <PageHead title={PRICING_PAGE.title} lead={PRICING_PAGE.lead} />
+
+    <section class="block block--tight" aria-label="Plans">
+      <div class="container">
+        <PlanCards id="pricing" />
+        <p class="plans__foot">{PRICING_PAGE.footnote}</p>
+      </div>
+    </section>
+
+    <section class="block block--ruled" aria-labelledby="compare-title">
+      <div class="container">
+        <div class="section-intro">
+          <h2 id="compare-title">Compare every feature</h2>
+          <p class="lead">Everything in each plan, side by side.</p>
+        </div>
+        <div class="compare-wrap" tabindex="0" role="region" aria-labelledby="compare-title">
+          <table class="compare">
+            <caption>Scroll sideways on small screens to see every plan.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Feature</th>
+                {PLANS.map(plan => <th scope="col">{plan.name}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {
+                COMPARE.map(group => (
+                  <>
+                    <tr class="group">
+                      <th scope="colgroup" colspan={PLANS.length + 1}>
+                        {group.group}
+                      </th>
+                    </tr>
+                    {group.rows.map(row => (
+                      <tr>
+                        <th scope="row">{row.feature}</th>
+                        {row.cells.map(cell =>
+                          cell === true ? (
+                            <td>
+                              <Icon name="check" class="yes" label="Included" />
+                            </td>
+                          ) : cell === false ? (
+                            <td>
+                              <Icon name="dash" class="no" label="Not included" />
+                            </td>
+                          ) : (
+                            <td>{cell}</td>
+                          )
+                        )}
+                      </tr>
+                    ))}
+                  </>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="block block--ruled" aria-labelledby="pricing-faq-title">
+      <div class="container faq-layout">
+        <div class="section-intro">
+          <h2 id="pricing-faq-title">Pricing questions</h2>
+          <p>Need a custom plan for several communities? Tell us what you are running.</p>
+          <p><a class="text-link" href="/contact?topic=sales">Talk to us</a></p>
+        </div>
+        <Faq items={PRICING_PAGE.faq} />
+      </div>
+    </section>
+
+    <CtaBand title="Try it free, decide later" body="Every plan starts with a free trial. Bring your community over and see how it feels." />
+  </main>
+</Base>

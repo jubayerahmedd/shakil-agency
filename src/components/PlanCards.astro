@@ -1,0 +1,71 @@
+---
+/**
+ * The three plans with a monthly / yearly switch (`content/pricing.ts`). The
+ * switch is a radio group; a small script flips `data-billing` on the wrapper,
+ * and CSS shows the matching prices. Without script, monthly prices show.
+ */
+import {PLANS, YEARLY_SAVING, money} from '../content/pricing';
+import {LINKS} from '../content/site';
+import Placeholder from './Placeholder.astro';
+
+interface Props {
+  /** A unique name per page, so two switches never share a radio group. */
+  id: string;
+  compact?: boolean;
+}
+
+const {id, compact = false} = Astro.props;
+---
+
+<div class="plans-wrap" data-billing="monthly" data-plans>
+  <Placeholder label="Sample prices: set your own in src/content/pricing.ts" />
+  <div>
+    <fieldset class="billing">
+      <legend>Billing period</legend>
+      <label><input type="radio" name={`billing-${id}`} value="monthly" checked /> Monthly</label>
+      <label><input type="radio" name={`billing-${id}`} value="yearly" /> Yearly <span class="billing__save">{YEARLY_SAVING}</span></label>
+    </fieldset>
+  </div>
+  <div class="plans">
+    {
+      PLANS.map(plan => (
+        <article class:list={['plan', plan.featured && 'plan--featured']} aria-labelledby={`plan-${id}-${plan.id}`}>
+          <div class="plan__head">
+            <h3 id={`plan-${id}-${plan.id}`}>{plan.name}</h3>
+            {plan.featured && <span class="plan__badge">Most popular</span>}
+          </div>
+          <p class="plan__for">{plan.for}</p>
+          <p class="price">
+            <span class="price__amount" data-show="monthly">{money(plan.monthly)}</span>
+            <span class="price__amount" data-show="yearly">{money(plan.yearly)}</span>
+            <span class="price__per">per month</span>
+          </p>
+          <p class="price__billed">
+            <span data-show="monthly">Billed monthly</span>
+            <span data-show="yearly">Billed {money(plan.yearly * 12)} yearly</span>
+          </p>
+          <a class:list={['btn', 'btn--block', !plan.featured && 'btn--ghost']} href={LINKS.start}>
+            {plan.cta}
+          </a>
+          <ul class="ticks">
+            {(compact ? plan.highlights.slice(0, 3) : plan.highlights).map(item => (
+              <li>{item}</li>
+            ))}
+          </ul>
+        </article>
+      ))
+    }
+  </div>
+</div>
+
+<script>
+  for (const wrap of document.querySelectorAll<HTMLElement>('[data-plans]')) {
+    wrap.addEventListener('change', event => {
+      const input = event.target;
+      if (input instanceof HTMLInputElement && input.type === 'radio') wrap.dataset.billing = input.value;
+    });
+    // Back/forward can restore a checked "yearly" radio: match the prices to it.
+    const checked = wrap.querySelector<HTMLInputElement>('.billing input:checked');
+    if (checked) wrap.dataset.billing = checked.value;
+  }
+</script>
