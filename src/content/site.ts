@@ -42,7 +42,7 @@ export const LINKS = {
   start: '/join',
   login: '/login',
   demo: '/contact?type=demo',
-  community: '/feeds',
+  community: '/admin',
 };
 
 /** PLACEHOLDER: the inbox the support and sales emails go to. */

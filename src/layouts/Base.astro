@@ -131,7 +131,7 @@ const year = new Date().getUTCFullYear();
               viewer.state === 'member' ? (
                 <>
                   <a class="button ghost small-button" href={LINKS.community}>
-                    Community
+                    Agency
                   </a>
                   <span class="viewer" title={viewer.name ?? ''}>
                     {viewer.avatar ? (
@@ -213,7 +213,7 @@ const year = new Date().getUTCFullYear();
           <a class="btn btn--ghost btn--lg" href={loginHref}>Log in</a>
         </div>
         <div class="mobile-menu__actions" data-member-only hidden={viewer.state !== 'member'}>
-          <a class="btn btn--lg" href={LINKS.community}>Open the community</a>
+          <a class="btn btn--lg" href={LINKS.community}>Open Agency</a>
         </div>
       </div>
     </header>
