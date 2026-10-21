@@ -1042,13 +1042,7 @@ img {
   color: var(--color-accent);
 }
 
-.billing label:has(input:checked) @media (max-width: 26rem) {
-  .billing label {
-    padding: 0 var(--space-sm);
-  }
-}
-
-.billing__save {
+.billing label:has(input:checked) .billing__save {
   color: var(--color-accent-ink);
 }
 
