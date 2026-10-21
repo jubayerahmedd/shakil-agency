@@ -266,7 +266,13 @@ const year = new Date().getUTCFullYear();
       import {logout, refreshSession} from '../platform/browser';
       import {hydrateStaticPage} from '../platform/static-page';
 
-      if (document.body.dataset.static === '1') void hydrateStaticPage();
+      if (document.body.dataset.static === '1') {
+        void hydrateStaticPage().then(() => {
+          // The platform's hydration hardcodes '/feeds' and 'Community'; patch to our label/path.
+          const link = document.querySelector<HTMLAnchorElement>('a.button.ghost.small-button[href="/feeds"]');
+          if (link) { link.href = '/admin'; link.textContent = 'Agency'; }
+        });
+      }
 
       // The server saw an expired access token but a refresh cookie: refresh
       // ONCE in the browser (the server never does), then re-render signed in.
